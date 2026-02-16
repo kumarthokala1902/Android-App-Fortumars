@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "451866312396",
+    "project_id": "fortumars-app1",
+    "storage_bucket": "fortumars-app1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:451866312396:android:1a28bede44f112315a8c69",
+        "android_client_info": {
+          "package_name": "com.fortumars.mart"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAvMNgSxO6S9GO4EFYw9dBGj-Du3m-RXo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

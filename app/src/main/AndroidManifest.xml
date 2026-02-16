@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.fortumars.mart">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="FortuMart"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.GoogleApp">
+
+        <activity
+            android:name=".activities.LoginActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".activities.RegisterActivity" />
+
+        <activity
+            android:name=".activities.MainActivity"
+            android:windowSoftInputMode="adjustPan" />
+
+        <activity
+            android:name=".activities.CartActivity"
+            android:label="My Cart"
+            android:parentActivityName=".activities.MainActivity" />
+
+        <activity
+            android:name=".activities.ProfileActivity"
+            android:label="Profile"
+            android:parentActivityName=".activities.MainActivity" />
+
+    </application>
+</manifest>
