@@ -25,7 +25,12 @@ public class LoginActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
         if (mAuth.getCurrentUser() != null) {
-            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+            // Check if logged in user is the admin
+            if ("admin@gmail.com".equals(mAuth.getCurrentUser().getEmail())) {
+                startActivity(new Intent(LoginActivity.this, AdminActivity.class));
+            } else {
+                startActivity(new Intent(LoginActivity.this, MainActivity.class));
+            }
             finish();
         }
 
@@ -56,16 +61,26 @@ public class LoginActivity extends AppCompatActivity {
         progressBar.setVisibility(View.VISIBLE);
         btnLogin.setEnabled(false);
 
+        // Standard Firebase Login for everyone, including Admin
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     progressBar.setVisibility(View.GONE);
                     btnLogin.setEnabled(true);
                     if (task.isSuccessful()) {
-                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                        if (email.equals("admin@gmail.com")) {
+                            startActivity(new Intent(LoginActivity.this, AdminActivity.class));
+                        } else {
+                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                        }
                         finish();
                     } else {
-                        Toast.makeText(LoginActivity.this, "Authentication failed: " + task.getException().getMessage(),
-                                Toast.LENGTH_SHORT).show();
+                        // If it's the admin and login fails, they might need to register first
+                        if (email.equals("admin@gmail.com")) {
+                            Toast.makeText(LoginActivity.this, "Admin Login Failed. Ensure you have registered this admin account in the app first.", Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(LoginActivity.this, "Authentication failed: " + task.getException().getMessage(),
+                                    Toast.LENGTH_SHORT).show();
+                        }
                     }
                 });
     }

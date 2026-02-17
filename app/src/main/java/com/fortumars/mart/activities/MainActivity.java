@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
@@ -25,13 +26,18 @@ import com.fortumars.mart.model.Product;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity implements ProductAdapter.OnCartUpdateListener {
+    private static final String TAG = "MainActivity";
     private RecyclerView rvProducts;
     private ProductAdapter adapter;
     private List<Product> allProducts;
@@ -40,6 +46,7 @@ public class MainActivity extends AppCompatActivity implements ProductAdapter.On
     private AutoCompleteTextView etSearch;
     private TextView tvWelcome, tvCartBadge;
     private FirebaseAuth mAuth;
+    private DatabaseReference productsRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,9 +61,58 @@ public class MainActivity extends AppCompatActivity implements ProductAdapter.On
 
         setContentView(R.layout.activity_main);
 
-        allProducts = ProductProvider.getAllProducts();
+        productsRef = FirebaseDatabase.getInstance().getReference("Products");
+        allProducts = new ArrayList<>();
+
         initViews();
         loadUserData();
+        listenToFirebaseProducts();
+    }
+
+    private void listenToFirebaseProducts() {
+        productsRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                Log.d(TAG, "Syncing products from Firebase...");
+                
+                Map<String, Product> combinedMap = new HashMap<>();
+                
+                // 1. Add all static products first
+                for (Product p : ProductProvider.getAllProducts()) {
+                    combinedMap.put(p.getId(), p);
+                }
+
+                // 2. Add/Update from Firebase (this includes products added via Admin Panel)
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    Product p = ds.getValue(Product.class);
+                    if (p != null && p.getId() != null) {
+                        combinedMap.put(p.getId(), p);
+                    }
+                }
+
+                // 3. Convert to list and sort: Put new Firebase additions (starting with '-') at the top
+                List<Product> sortedList = new ArrayList<>(combinedMap.values());
+                Collections.sort(sortedList, (p1, p2) -> {
+                    boolean isFirebase1 = p1.getId().startsWith("-");
+                    boolean isFirebase2 = p2.getId().startsWith("-");
+                    if (isFirebase1 && !isFirebase2) return -1;
+                    if (!isFirebase1 && isFirebase2) return 1;
+                    // If both are Firebase or both are static, keep their relative order
+                    return 0;
+                });
+
+                allProducts = sortedList;
+                runOnUiThread(() -> {
+                    filter(etSearch.getText().toString());
+                    setupSearchSuggestions();
+                });
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e(TAG, "Firebase Error: " + error.getMessage());
+            }
+        });
     }
 
     @Override
@@ -78,8 +134,6 @@ public class MainActivity extends AppCompatActivity implements ProductAdapter.On
         adapter = new ProductAdapter(this, new ArrayList<>(allProducts), this);
         rvProducts.setLayoutManager(new GridLayoutManager(this, 2));
         rvProducts.setAdapter(adapter);
-
-        setupSearchSuggestions();
 
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -130,18 +184,10 @@ public class MainActivity extends AppCompatActivity implements ProductAdapter.On
     }
 
     private void loadUserData() {
-        String userId = mAuth.getCurrentUser().getUid();
-        FirebaseDatabase.getInstance().getReference("Users").child(userId)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (snapshot.exists()) {
-                            String name = snapshot.child("name").getValue(String.class);
-                            tvWelcome.setText("Hello, " + name + "!");
-                        }
-                    }
-                    @Override public void onCancelled(@NonNull DatabaseError error) {}
-                });
+        if (mAuth.getCurrentUser() != null) {
+            String email = mAuth.getCurrentUser().getEmail();
+            tvWelcome.setText("Hello, " + (email != null ? email.split("@")[0] : "User") + "!");
+        }
     }
 
     private void setupSearchSuggestions() {
@@ -155,7 +201,7 @@ public class MainActivity extends AppCompatActivity implements ProductAdapter.On
     }
 
     private void filter(String query) {
-        if (allProducts == null) return;
+        if (allProducts == null || adapter == null) return;
         List<Product> filtered = allProducts.stream()
                 .filter(p -> (selectedCategory.equals("All") || p.getCategory().equals(selectedCategory)))
                 .filter(p -> p.getName().toLowerCase().contains(query.toLowerCase()))
